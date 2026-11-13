@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動式答案之書</title>
+    <!-- 引入 Google Fonts 營造神祕古典感 -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --book-spine: #2c1d11;
+            --book-cover: #3e2723;
+            --book-cover-shadow: #1b1009;
+            --page-bg: #fbf9f1;
+            --text-color: #2b2b2b;
+            --accent-gold: #c5a059;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Noto Serif TC', serif;
+            background: radial-gradient(circle at center, #2c3e50 0%, #1a252f 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-family: 'Cinzel', 'Noto Serif TC', serif;
+            font-size: 2.2rem;
+            color: var(--accent-gold);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        p.instruction {
+            color: #d1d8e0;
+            font-size: 1rem;
+            margin-bottom: 30px;
+            min-height: 1.5em;
+        }
+
+        /* 輸入框與按鈕群組 */
+        .input-group {
+            width: 100%;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            max-width: 450px;
+            padding: 14px 20px;
+            font-size: 1.1rem;
+            font-family: 'Noto Serif TC', serif;
+            border: 2px solid var(--accent-gold);
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        input[type="text"]:focus {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 15px rgba(197, 160, 89, 0.4);
+        }
+
+        /* 書本容器 */
+        .book-container {
+            perspective: 1200px;
+            margin: 20px 0;
+            cursor: pointer;
+            display: none; /* 提問後才顯示 */
+        }
+
+        .book {
+            width: 320px;
+            height: 440px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            border-radius: 5px 12px 12px 5px;
+        }
+
+        .book.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .book.flipping {
+            animation: shake 0.4s ease infinite;
+        }
+
+        /* 書皮 */
+        .page {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            backface-visibility: hidden;
+            border-radius: 5px 12px 12px 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 30px;
+            user-select: none;
+        }
+
+        .cover {
+            background: linear-gradient(135deg, #4a3319 0%, #2c1d11 100%);
+            border: 4px solid var(--accent-gold);
+            border-left: 14px solid #1b1009;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .cover h2 {
+            font-family: 'Cinzel', serif;
+            font-size: 1.8rem;
+            color: var(--accent-gold);
+            text-align: center;
+            margin-bottom: 20px;
+            border-top: 1px solid var(--accent-gold);
+            border-bottom: 1px solid var(--accent-gold);
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        .cover p {
+            font-size: 0.9rem;
+            color: #d1d8e0;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* 書內頁 (翻開後) */
+        .inside-page {
+            background-color: var(--page-bg);
+            color: var(--text-color);
+            transform: rotateY(180deg);
+            border: 1px solid #dcd6cd;
+            border-left: 12px solid #e0d5c1;
+            box-shadow: inset 15px 0 30px rgba(0,0,0,0.05);
+            text-align: center;
+            justify-content: space-between;
+        }
+
+        .result-question {
+            font-size: 0.95rem;
+            color: #7f8c8d;
+            border-bottom: 1px dashed #bdc3c7;
+            padding-bottom: 12px;
+            width: 100%;
+        }
+
+        .result-answer {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #2c3e50;
+            line-height: 1.5;
+            margin: auto 0;
+            letter-spacing: 1px;
+        }
+
+        .result-hint {
+            font-size: 0.8rem;
+            color: #95a5a6;
+        }
+
+        /* 按鈕風格 */
+        .btn {
+            background: linear-gradient(135deg, #d4af37 0%, #aa820a 100%);
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-family: 'Noto Serif TC', serif;
+            font-weight: 700;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(170, 130, 10, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(170, 130, 10, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* 結束時的後續按鈕區塊 */
+        .action-buttons {
+            display: none;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--accent-gold);
+            color: var(--accent-gold);
+        }
+
+        .btn-outline:hover {
+            background: rgba(197, 160, 89, 0.1);
+        }
+
+        /* 結束畫面訊息 */
+        .farewell-screen {
+            display: none;
+            text-align: center;
+            animation: fadeIn 0.8s ease;
+        }
+
+        .farewell-screen h2 {
+            font-size: 2.5rem;
+            color: var(--accent-gold);
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes shake {
+            0% { transform: rotateY(0deg) translateY(0); }
+            25% { transform: rotateY(5deg) translateY(-4px); }
+            50% { transform: rotateY(-5deg) translateY(4px); }
+            75% { transform: rotateY(3deg) translateY(-2px); }
+            100% { transform: rotateY(0deg) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>答案之書</h1>
+        <p class="instruction" id="instruction-text">請在下方輸入您心中的疑問，並按下按鈕開始尋求指引</p>
+
+        <!-- 步驟一：輸入問題 -->
+        <div class="input-group" id="input-section">
+            <input type="text" id="question-input" placeholder="例如：我該接受這個新挑戰嗎？" autocomplete="off">
+            <button class="btn" id="start-btn">開始尋找答案</button>
+        </div>
+
+        <!-- 書本互動區 -->
+        <div class="book-container" id="book-container" title="點擊書本翻開解答">
+            <div class="book" id="book">
+                <!-- 封面 -->
+                <div class="page cover">
+                    <h2>THE BOOK<br>OF ANSWERS</h2>
+                    <p>心中默念問題<br>點擊此書翻頁</p>
+                </div>
+                <!-- 內頁 (答案) -->
+                <div class="page inside-page">
+                    <div class="result-question" id="display-question">你的問題：--</div>
+                    <div class="result-answer" id="display-answer">載入中...</div>
+                    <div class="result-hint">── 答案之書 ──</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 解答揭曉後的 2 個按鈕 -->
+        <div class="action-buttons" id="action-buttons">
+            <button class="btn" id="more-question-btn">我還有問題要問</button>
+            <button class="btn btn-outline" id="finished-btn">我問完了</button>
+        </div>
+
+        <!-- 「我問完了」後的結語畫面 -->
+        <div class="farewell-screen" id="farewell-screen">
+            <h2>祝今天好好</h2>
+            <button class="btn btn-outline" id="restart-from-end-btn" style="margin-top: 15px;">重新體驗</button>
+        </div>
+    </div>
+
+    <script>
+        const answers = [
+            "大膽去嘗試", "順其自然", "再等一段時間", "別抱太大希望", 
+            "會有意想不到的收穫", "放棄吧", "相信你的直覺", "保持懷疑", 
+            "結果會是好的", "短期內不建議", "這會是一個轉機", "事情沒那麼簡單", 
+            "毫無疑問", "專注於當下", "換個角度思考", "這是最好的安排", 
+            "聽從長輩的建議", "準備好接受挑戰", "事情會有波折", "絕對可行", 
+            "不要回頭", "尋求他人的協助", "答案就在你心中", "時機尚未成熟"
+        ];
+
+        const questionInput = document.getElementById('question-input');
+        const startBtn = document.getElementById('start-btn');
+        const inputSection = document.getElementById('input-section');
+        const bookContainer = document.getElementById('book-container');
+        const book = document.getElementById('book');
+        const instructionText = document.getElementById('instruction-text');
+        const displayQuestion = document.getElementById('display-question');
+        const displayAnswer = document.getElementById('display-answer');
+        const actionButtons = document.getElementById('action-buttons');
+        const moreQuestionBtn = document.getElementById('more-question-btn');
+        const finishedBtn = document.getElementById('finished-btn');
+        const farewellScreen = document.getElementById('farewell-screen');
+        const restartFromEndBtn = document.getElementById('restart-from-end-btn');
+
+        let currentStep = 0; 
+        let userQuestion = "";
+
+        // 點擊「開始尋找答案」
+        startBtn.addEventListener('click', () => {
+            const val = questionInput.value.trim();
+            if (!val) {
+                alert('請先輸入您心中的疑問哦！');
+                questionInput.focus();
+                return;
+            }
+
+            userQuestion = val;
+            inputSection.style.display = 'none';
+            bookContainer.style.display = 'block';
+            
+            currentStep = 1;
+            instructionText.textContent = "心中默念問題，點擊書本開始翻閱";
+        });
+
+        // 點擊書本互動
+        bookContainer.addEventListener('click', () => {
+            if (currentStep === 1) {
+                currentStep = 1.5; 
+                instructionText.textContent = "正在尋找命運的指引...";
+                book.classList.add('flipping');
+
+                setTimeout(() => {
+                    book.classList.remove('flipping');
+                    
+                    const randomAns = answers[Math.floor(Math.random() * answers.length)];
+                    displayQuestion.textContent = `「 ${userQuestion} 」`;
+                    displayAnswer.textContent = randomAns;
+
+                    book.classList.add('flipped');
+                    currentStep = 2;
+                    instructionText.textContent = "您的解答已揭曉";
+                    
+                    // 顯示結尾的兩個按鈕
+                    actionButtons.style.display = 'flex';
+                }, 1000); 
+            }
+        });
+
+        // 選項 1：「我還有問題要問」 -> 回到一開始的頁面
+        moreQuestionBtn.addEventListener('click', () => {
+            resetToBeginning();
+        });
+
+        // 選項 2：「我問完了」 -> 出現「祝今天好好」
+        finishedBtn.addEventListener('click', () => {
+            bookContainer.style.display = 'none';
+            actionButtons.style.display = 'none';
+            instructionText.textContent = "";
+            farewellScreen.style.display = 'block';
+        });
+
+        // 從結語畫面重新開始
+        restartFromEndBtn.addEventListener('click', () => {
+            farewellScreen.style.display = 'none';
+            resetToBeginning();
+        });
+
+        // 重設狀態回到首頁函式
+        function resetToBeginning() {
+            currentStep = 0;
+            userQuestion = "";
+            questionInput.value = "";
+            book.classList.remove('flipped');
+            bookContainer.style.display = 'none';
+            actionButtons.style.display = 'none';
+            farewellScreen.style.display = 'none';
+            inputSection.style.display = 'flex';
+            instructionText.textContent = "請在下方輸入您心中的疑問，並按下按鈕開始尋求指引";
+            questionInput.focus();
+        }
+    </script>
+</body>
+</html>
